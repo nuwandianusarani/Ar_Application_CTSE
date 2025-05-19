@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+      .controller {
+        position: fixed;
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        display: none;
+        flex-wrap: wrap;
+        justify-content: center;
+        z-index: 20;
+        padding: 0 10px;
+      }
+      button {
+        flex: 1 1 40%;
+        min-width: 100px;
+        max-width: 150px;
+        margin: 5px;
+        padding: 15px 20px;
+        font-size: 18px;
+        border-radius: 10px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+      }
+    </style>
+  </head>
+
+  <body style="margin: 0; overflow: hidden">
+    <div class="controller" id="controls">
+      <button onclick="moveAnimal('forward')">Forward</button>
+      <button onclick="moveAnimal('backward')">Backward</button>
+      <button onclick="moveAnimal('left')">Left</button>
+      <button onclick="moveAnimal('right')">Right</button>
+      <button onclick="moveAnimal('idle')">Idle</button>
+      <button onclick="moveAnimal('jump')">Jump</button>
+    </div>
+
+    <a-scene embedded arjs>
+      <a-assets>
+        <a-asset-item id="deer" src="muwa.glb"></a-asset-item>
+        <a-asset-item id="tiger" src="tiger.glb"></a-asset-item>
+        <a-asset-item id="elephant" src="elephant.glb"></a-asset-item>
+        <a-asset-item id="rabbit" src="rabbit.glb"></a-asset-item>
+      </a-assets>
+
+      <!-- Deer Marker -->
+      <a-marker type="pattern" url="pattern-DEER_AR.patt">
+        <a-entity
+          id="deerModel"
+          gltf-model="#deer"
+          animation-mixer="clip: Idle"
+          position="0 0 0"
+          rotation="0 0 0"
+          scale="0.8 0.8 0.8"
+        ></a-entity>
+      </a-marker>
+
+      <!-- Tiger Marker -->
+      <a-marker type="pattern" url="pattern-TIGER_AR.patt">
+        <a-entity
+          id="tigerModel"
+          gltf-model="#tiger"
+          animation-mixer="clip: Idle"
+          position="0 0 0"
+          rotation="0 0 0"
+          scale="0.6 0.6 0.6"
+        ></a-entity>
+      </a-marker>
+
+      <!-- Elephant Marker -->
+      <a-marker type="pattern" url="pattern-ELEPHANT_AR.patt">
+        <a-entity
+          id="elephantModel"
+          gltf-model="#elephant"
+          animation-mixer="clip: Idle"
+          position="0 0 0"
+          rotation="0 0 0"
+          scale="0.9 0.9 0.9"
+        ></a-entity>
+      </a-marker>
+
+      <!-- Rabbit Marker -->
+      <a-marker type="pattern" url="pattern-RABBIT_AR.patt">
+        <a-entity
+          id="rabbitModel"
+          gltf-model="#rabbit"
+          animation-mixer="clip: Idle"
+          position="0 0 0"
+          rotation="0 0 0"
+          scale="0.4 0.4 0.4"
+        ></a-entity>
+      </a-marker>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+      let currentAnimal = null;
+      let speed = 0.05;
+      let rotationSpeed = 10;
+
+      window.onload = () => {
+        const controls = document.getElementById("controls");
+        const markers = document.querySelectorAll("a-marker");
+
+        markers.forEach((marker) => {
+          marker.addEventListener("markerFound", () => {
+            currentAnimal = marker.firstElementChild;
+            controls.style.display = "flex";
+            console.log("Marker found - Showing controls");
+          });
+          marker.addEventListener("markerLost", () => {
+            if (marker.firstElementChild === currentAnimal) {
+              controls.style.display = "none";
+              currentAnimal = null;
+              console.log("Marker lost - Hiding controls");
+            }
+          });
+        });
+      };
+
+      function moveAnimal(action) {
+        if (!currentAnimal) return;
+
+        let rotation = currentAnimal.getAttribute("rotation");
+        let position = currentAnimal.getAttribute("position");
+
+        switch (action) {
+          case "forward":
+            currentAnimal.setAttribute("animation-mixer", "clip: Walk");
+            position.x -= speed * Math.sin(THREE.Math.degToRad(rotation.y));
+            position.z -= speed * Math.cos(THREE.Math.degToRad(rotation.y));
+            break;
+          case "backward":
+            currentAnimal.setAttribute("animation-mixer", "clip: Walk");
+            position.x += speed * Math.sin(THREE.Math.degToRad(rotation.y));
+            position.z += speed * Math.cos(THREE.Math.degToRad(rotation.y));
+            break;
+          case "left":
+            rotation.y += rotationSpeed;
+            currentAnimal.setAttribute("animation-mixer", "clip: WalkL");
+            break;
+          case "right":
+            rotation.y -= rotationSpeed;
+            currentAnimal.setAttribute("animation-mixer", "clip: WalkR");
+            break;
+          case "jump":
+            currentAnimal.setAttribute("animation-mixer", "clip: JumpStand");
+            break;
+          case "idle":
+            currentAnimal.setAttribute("animation-mixer", "clip: Idle");
+            break;
+        }
+
+        currentAnimal.setAttribute("rotation", rotation);
+        currentAnimal.setAttribute("position", position);
+      }
+    </script>
+  </body>
+</html>
