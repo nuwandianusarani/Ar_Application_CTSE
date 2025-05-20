@@ -28,10 +28,40 @@
         background-color: #007bff;
         color: white;
       }
+      .loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 24px;
+        z-index: 9999;
+      }
+      .sound-controls {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 30;
+      }
+      .sound-toggle {
+        background-color: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 50%;
+        font-size: 20px;
+      }
     </style>
   </head>
 
   <body style="margin: 0; overflow: hidden">
+    <div id="loader" class="loader">Loading 3D Model... Please wait</div>
+    
     <div class="controller" id="controls">
       <button onclick="moveAnimal('forward')">Forward</button>
       <button onclick="moveAnimal('backward')">Backward</button>
@@ -41,13 +71,14 @@
       <button onclick="moveAnimal('jump')">Jump</button>
     </div>
 
-    <a-scene embedded arjs>
+    <a-scene embedded arjs vr-mode-ui="enabled: false">
       <a-assets>
+        <!-- We only have the deer model available, so we'll use it for all markers with variations -->
         <a-asset-item id="deer" src="muwa.glb"></a-asset-item>
-        <a-asset-item id="tiger" src="tiger.glb"></a-asset-item>
-        <a-asset-item id="elephant" src="elephant.glb"></a-asset-item>
-        <a-asset-item id="rabbit" src="rabbit.glb"></a-asset-item>
       </a-assets>
+
+      <!-- Background ambience -->
+      <a-entity sound="src: #jungle-ambience; autoplay: true; loop: true; volume: 0.5" id="background-sound"></a-entity>
 
       <!-- Deer Marker -->
       <a-marker type="pattern" url="pattern-DEER_AR.patt">
@@ -58,43 +89,77 @@
           position="0 0 0"
           rotation="0 0 0"
           scale="0.8 0.8 0.8"
-        ></a-entity>
+          class="animal"
+        >
+          <a-entity particle-system="preset: dust; color: #654321; particleCount: 20; size: 0.5; 
+                    duration: 2; visible: false;" position="0 0 0" id="deer-particles"></a-entity>
+        </a-entity>
       </a-marker>
 
-      <!-- Tiger Marker -->
+      <!-- Tiger Marker (Using deer model with different color and scale) -->
       <a-marker type="pattern" url="pattern-TIGER_AR.patt">
         <a-entity
           id="tigerModel"
-          gltf-model="#tiger"
+          gltf-model="#deer"
           animation-mixer="clip: Idle"
           position="0 0 0"
-          rotation="0 0 0"
+          rotation="0 180 0"
           scale="0.6 0.6 0.6"
-        ></a-entity>
+          class="animal"
+          material="color: #ff9900"
+        >
+          <a-entity particle-system="preset: dust; color: #ff9500; particleCount: 20; size: 0.5; 
+                    duration: 2; visible: false;" position="0 0 0" id="tiger-particles"></a-entity>
+        </a-entity>
       </a-marker>
 
-      <!-- Elephant Marker -->
+      <!-- Elephant Marker (Using deer model with larger scale) -->
       <a-marker type="pattern" url="pattern-ELEPHANT_AR.patt">
         <a-entity
           id="elephantModel"
-          gltf-model="#elephant"
+          gltf-model="#deer"
           animation-mixer="clip: Idle"
           position="0 0 0"
-          rotation="0 0 0"
-          scale="0.9 0.9 0.9"
-        ></a-entity>
+          rotation="0 270 0"
+          scale="1.2 1.2 1.2"
+          class="animal"
+        >
+          <a-entity particle-system="preset: dust; color: #cccccc; particleCount: 30; size: 0.8; 
+                    duration: 2; visible: false;" position="0 0 0" id="elephant-particles"></a-entity>
+        </a-entity>
       </a-marker>
 
-      <!-- Rabbit Marker -->
+      <!-- Rabbit Marker (Using deer model with smaller scale) -->
       <a-marker type="pattern" url="pattern-RABBIT_AR.patt">
         <a-entity
           id="rabbitModel"
-          gltf-model="#rabbit"
+          gltf-model="#deer"
           animation-mixer="clip: Idle"
           position="0 0 0"
-          rotation="0 0 0"
+          rotation="0 90 0"
           scale="0.4 0.4 0.4"
-        ></a-entity>
+          class="animal"
+        >
+          <a-entity particle-system="preset: dust; color: #ffffff; particleCount: 15; size: 0.3; 
+                   duration: 2; visible: false;" position="0 0 0" id="rabbit-particles"></a-entity>
+        </a-entity>
+      </a-marker>
+
+      <!-- Lion Marker (NEW - Using deer model with gold-ish color) -->
+      <a-marker type="pattern" url="pattern-LION_AR.patt">
+        <a-entity
+          id="lionModel"
+          gltf-model="#deer"
+          animation-mixer="clip: Idle"
+          position="0 0 0"
+          rotation="0 45 0"
+          scale="0.9 0.9 0.9"
+          class="animal"
+          material="color: #d4af37"
+        >
+          <a-entity particle-system="preset: dust; color: #d4af37; particleCount: 25; size: 0.6; 
+                    duration: 2; visible: false;" position="0 0 0" id="lion-particles"></a-entity>
+        </a-entity>
       </a-marker>
 
       <a-entity camera></a-entity>
@@ -108,13 +173,33 @@
       window.onload = () => {
         const controls = document.getElementById("controls");
         const markers = document.querySelectorAll("a-marker");
+        const loader = document.getElementById("loader");
+        
+        // Hide loader when all models are loaded
+        const scene = document.querySelector('a-scene');
+        scene.addEventListener('loaded', function () {
+          setTimeout(() => {
+            loader.style.display = 'none';
+          }, 3000);
+        });
 
         markers.forEach((marker) => {
           marker.addEventListener("markerFound", () => {
             currentAnimal = marker.firstElementChild;
             controls.style.display = "flex";
+            
+            // Show particles effect
+            const particles = currentAnimal.querySelector('[particle-system]');
+            if (particles) {
+              particles.setAttribute('particle-system', 'visible', true);
+              setTimeout(() => {
+                particles.setAttribute('particle-system', 'visible', false);
+              }, 2000);
+            }
+            
             console.log("Marker found - Showing controls");
           });
+          
           marker.addEventListener("markerLost", () => {
             if (marker.firstElementChild === currentAnimal) {
               controls.style.display = "none";
@@ -130,36 +215,52 @@
 
         let rotation = currentAnimal.getAttribute("rotation");
         let position = currentAnimal.getAttribute("position");
-
+        
+        // Show particles on movement
+        const particles = currentAnimal.querySelector('[particle-system]');
+        
         switch (action) {
           case "forward":
             currentAnimal.setAttribute("animation-mixer", "clip: Walk");
             position.x -= speed * Math.sin(THREE.Math.degToRad(rotation.y));
             position.z -= speed * Math.cos(THREE.Math.degToRad(rotation.y));
+            if (particles) particles.setAttribute('particle-system', 'visible', true);
             break;
           case "backward":
             currentAnimal.setAttribute("animation-mixer", "clip: Walk");
             position.x += speed * Math.sin(THREE.Math.degToRad(rotation.y));
             position.z += speed * Math.cos(THREE.Math.degToRad(rotation.y));
+            if (particles) particles.setAttribute('particle-system', 'visible', true);
             break;
           case "left":
             rotation.y += rotationSpeed;
             currentAnimal.setAttribute("animation-mixer", "clip: WalkL");
+            if (particles) particles.setAttribute('particle-system', 'visible', true);
             break;
           case "right":
             rotation.y -= rotationSpeed;
             currentAnimal.setAttribute("animation-mixer", "clip: WalkR");
+            if (particles) particles.setAttribute('particle-system', 'visible', true);
             break;
           case "jump":
             currentAnimal.setAttribute("animation-mixer", "clip: JumpStand");
+            if (particles) particles.setAttribute('particle-system', 'visible', true);
             break;
           case "idle":
             currentAnimal.setAttribute("animation-mixer", "clip: Idle");
+            if (particles) particles.setAttribute('particle-system', 'visible', false);
             break;
         }
 
         currentAnimal.setAttribute("rotation", rotation);
         currentAnimal.setAttribute("position", position);
+        
+        // Hide particles after movement
+        if (action !== "idle" && particles) {
+          setTimeout(() => {
+            particles.setAttribute('particle-system', 'visible', false);
+          }, 1000);
+        }
       }
     </script>
   </body>
